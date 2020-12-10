@@ -30,6 +30,6 @@ func main() {
 	app.POST("/task", h.CreateTaskHandler)       // create task
 	app.PUT("/task/:id", h.UpdateTaskHandler)    // update task
 	app.DELETE("/task/:id", h.DeleteTaskHandler) // delete task
-	app.POST("/subtask", h.SubTaskHandler)       // create subtask
+	app.POST("/subtask/:id", h.SubTaskHandler)   // create subtask
 	app.Run(":7070")
 }

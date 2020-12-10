@@ -10,16 +10,59 @@ import (
 	"google.golang.org/grpc"
 )
 
-// Task represents all the teasks and subtasks
-type Task struct {
-	ID          string `json:"task.id"`
+/* This is for consumption of database*/
+
+// -- this struct represents the user payload
+type CreateTaskPlInt struct {
 	Title       string `json:"task.title"`
 	Description string `json:"task.description"`
-	Time        string `json:"task.time"`
-	SubTask     []Task `json:"task.task"`
 	Parent      string `json:"task.parent"`
-	Type        string `json:"dgraph.type,omitempty"`
+	Time        string `json:"task.time"`
 }
+
+//-- this struct represents additional fields response to user
+type CreateTaskDB struct {
+	ID      string `json:"task.id"`
+	Type    string `json:"dgraph.type"`
+	SubTask []Task `json:"task.task"`
+}
+
+type Task struct {
+	CreateTaskPlInt
+	CreateTaskDB
+}
+
+// This struct is for user
+
+// -- this struct represents the user payload
+type CreateTaskPl struct {
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Parent      string `json:"parent"`
+	Time        string `json:"time"`
+}
+
+//-- this struct represents additional fields response to user
+type CreateTaskDBPl struct {
+	ID      string         `json:"id"`
+	SubTask []CreateTaskPl `json:"subtask"`
+}
+
+type TaskPl struct {
+	CreateTaskPl
+	CreateTaskDBPl
+}
+
+// Task represents all the teasks and subtasks
+//type Task struct {
+//ID          string `json:"task.id"`
+//Title       string `json:"task.title"`
+//Description string `json:"task.description"`
+//Time        string `json:"task.time"`
+//Subtask     []Task `json:"task.task"`
+//Parent      string `json:"task.parent"`
+//Type        string `json:"dgraph.type,omitempty"`
+//}
 
 var (
 	dg   *dgo.Dgraph
@@ -66,16 +109,15 @@ func GetAll() (res *api.Response, err error) {
 	// get all task
 	q := `query { 
 	    getTasks(func: has(task.id)){
-		task.id
-		task.title
-		task.description
-		task.time
-		draph.type
-		task.task{
-			task.id
-			task.title
-			task.description
-			task.time
+		id:	task.id
+		title:	task.title
+		description:	task.description
+		time:	task.time
+		subtask: task.task{
+			    id:task.id
+		    	    title:task.title
+		    	    description:task.description
+		    	    time:task.time
 			}
 	    }
 	}`
@@ -92,13 +134,13 @@ func GetTask(id string) (res *api.Response, err error) {
 	// get all task
 	q := `query gettask($id:string)
 	{ getTasks(func: eq(task.id,$id)){
-		task.title
-		task.description
-		task.time
-		task.task{
-			task.title
-			task.description
-			task.time
+		title:task.title
+	    	description:task.description
+	    	time:task.time
+	    	task:task.task{
+		    title:task.title
+		    description:task.description
+		    time:task.time
 			}
 	    }
 	}`

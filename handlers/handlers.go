@@ -15,11 +15,12 @@ import (
 )
 
 const (
-	SERVER     = "internal server error"
-	DONE       = "success"
-	NOEXIST    = "task does not exist"
-	JSON       = "bad json"
-	ID_INVALID = "id invalid"
+	SERVER         = "internal server error"
+	DONE           = "success"
+	NOEXIST        = "task does not exist"
+	NOEXIST_PARENT = "parent task does not exist"
+	JSON           = "bad json"
+	ID_INVALID     = "id invalid"
 )
 
 var (
@@ -34,25 +35,15 @@ func init() {
 	fmt.Println("init")
 }
 
-type CreateTask struct {
-	ID          string
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	Time        string `json:"time"`
-	SubTask     []models.Task
-	Parent      string
-	Type        string
-}
-
 // CreateTaskHandler create new task
 // TODO: add validation for time
 
 // CreateTaskHandler creates Task
-// CreateTaskHandler godoc
+// CreateTask godoc
 // @Summary Create a Task
 // @Description add by json Task
-// @Tags CreateTask
-// @Param task body CreateTask true "Create Task"
+// @Tags CreateTaskHandler
+// @Param task body models.CreateTaskPl true "Create Task"
 // @Accept  json
 // @Produce  json
 // @Success 200 {object} map[string]string
@@ -67,12 +58,12 @@ func CreateTaskHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, err)
 		return
 	}
-	type CreateTaskPl struct {
-		CreateTask
-	}
-	var t1 CreateTask
+	var t1 models.CreateTaskPl
 	err = json.Unmarshal(bytes, &t1)
-	t := models.Task(t1) // converting user struct to database ready struct
+	t3 := models.CreateTaskDB{} // converting user struct to database ready struct
+	t4 := models.CreateTaskPlInt(t1)
+	t := models.Task{t4, t3} // converting user struct to database ready struct
+	//t := models.Task(t2)        // converting user struct to database ready struct
 
 	if err != nil {
 		log.Error(err)
@@ -98,12 +89,13 @@ func CreateTaskHandler(c *gin.Context) {
 // UpdateTaskHandler create new task
 // TODO: add validation for time
 
-// UpdateTaskHandler creates Task
+// UpdateTaskHandler Updates Task
 // UpdateTaskHandler godoc
 // @Summary Update a Task
 // @Description add by json Task
-// @Tags CreateTask
-// @Param task body CreateTask true "Create Task"
+// @Tags UpdateTask
+// @Param taskId path string true "Update Task"
+// @Param task body models.CreateTaskPl true "Create Task"
 // @Accept  json
 // @Produce  json
 // @Success 200 {object} map[string]string
@@ -122,13 +114,17 @@ func UpdateTaskHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, err)
 		return
 	}
-	var t models.Task
-	t.ID = id // settting to param in case not specified
-	err = json.Unmarshal(payload, &t)
+	var t1 models.CreateTaskPl
+	err = json.Unmarshal(payload, &t1)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, JSON)
 		return
 	}
+	t3 := models.CreateTaskPlInt(t1)
+	t2 := models.CreateTaskDB{}
+	t := models.Task{t3, t2}
+
+	t.ID = id // settting to param in case not specified
 	res, err := models.UpdateTask(t)
 	if err != nil {
 		log.Error(err)
@@ -142,21 +138,32 @@ func UpdateTaskHandler(c *gin.Context) {
 
 // GetAllHandler gets all tasks currently in the system
 // TODO: add filters
+
+// GetAllHandler Updates Task
+// GetAllHandler godoc
+// @Summary Get All Tasks
+// @Description Get by json Task
+// @Tags GetAll
+// @Accept  json
+// @Produce json
+// @Success 200 {object} []models.CreateTaskPl
+// @Error 400 string
+// @Error 500 error
+// @Router /task [get]
 func GetAllHandler(c *gin.Context) {
 	res, err := models.GetAll()
 	// c.JSON(http.StatusOK, fmt.Sprintf("%s", res.Json)
 	// return
 	log.Info(res)
+	type GetAllPl struct {
+		models.CreateTaskPl
+		ID string `json:"id"`
+	}
 	type payload struct {
-		Data []models.Task `json:"getTasks"`
+		Data []models.TaskPl `json:"getTasks"`
 	}
 
 	var pl payload
-	if err != nil {
-		log.Error(err)
-		c.JSON(http.StatusInternalServerError, err)
-		return
-	}
 	err = json.Unmarshal(res.GetJson(), &pl)
 	if err != nil {
 		log.Error(err)
@@ -168,7 +175,19 @@ func GetAllHandler(c *gin.Context) {
 	return
 }
 
-// GetTaskHandler get task by id gets task by parameter id
+// GetTaskHandler get task by parameter id
+// GetTask Gets Task
+// GetTask godoc
+// @Summary Get a Task
+// @Description Get by id taskId
+// @Tags GetTask
+// @Param taskId path string true "Get Task"
+// @Accept  json
+// @Produce  json
+// @Success 200 {object} map[string]interface{}
+// @Error 400 string
+// @Error 500 error
+// @Router /task/{taskId} [get]
 func GetTaskHandler(c *gin.Context) {
 	id := string(c.Param("id"))
 	if id == "" {
@@ -196,6 +215,17 @@ func GetTaskHandler(c *gin.Context) {
 }
 
 // DeleteTaskHandler delete task
+// DeleteTaskHandler Updates Task
+// DeleteTaskHandler godoc
+// @Summary Delete a Task
+// @Description delete by id Task
+// @Tags DeleteTask
+// @Param taskId path string true "Delete Task"
+// @Produce  json
+// @Success 200 {object} string
+// @Error 400 string
+// @Error 500 error
+// @Router /task/{taskId} [delete]
 func DeleteTaskHandler(c *gin.Context) {
 	id := c.Param("id")
 
@@ -254,43 +284,65 @@ func DeleteTaskHandler(c *gin.Context) {
 
 // SubTaskHandler put given task as subtask
 // TODO: convert this into upsert mutation
+
+// SubTaskHandler Updates Task
+// SubTaskHandler godoc
+// @Summary Update a Task
+// @Description add by json subtask
+// @Tags SubTask
+// @Param taskId path string true "Subtask Task"
+// @Param task body models.CreateTaskPl true "Create Task"
+// @Accept  json
+// @Produce  json
+// @Success 200 {object} map[string]string
+// @Error 400 string
+// @Error 500 error
+// @Router /subtask/{taskId} [post]
 func SubTaskHandler(c *gin.Context) {
+	id := c.Param("id")
 	bytes, err := ioutil.ReadAll(c.Request.Body)
 	if err != nil {
 		log.Error(err)
 		c.JSON(http.StatusBadRequest, err)
 		return
 	}
-	var t models.Task
-	err = json.Unmarshal(bytes, &t)
+	var t1 models.CreateTaskPl
+	err = json.Unmarshal(bytes, &t1)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, "bad json")
+		c.JSON(http.StatusBadRequest, JSON)
 		return
 	}
+
+	t3 := models.CreateTaskPlInt(t1)
+	t2 := models.CreateTaskDB{} // Converting User side struct to db struct
+	t := models.Task{t3, t2}
+
+	t.Parent = id //parentID is a parameter
 	u := uuid.New()
 	t.ID = u.String()
 
 	if t.Parent == "" {
-		c.JSON(http.StatusBadRequest, "parent id empty")
+		// subtask cannot be added if parent does not exist
+		c.JSON(http.StatusBadRequest, NOEXIST_PARENT)
 		return
 	}
 
-	uid, err := models.GetUID(t.Parent)
+	uid, err := models.GetUID(t.Parent) // get parents uid
 
 	var pars map[string]interface{}
 
 	err = json.Unmarshal(uid.Json, &pars)
 	if len(pars["getTasks"].([]interface{})) == 0 {
-		c.JSON(http.StatusNotFound, NOEXIST)
+		c.JSON(http.StatusNotFound, NOEXIST_PARENT)
 		return
 	}
 
 	parentUID := string(pars["getTasks"].([]interface{})[0].(map[string]interface{})["uid"].(string))
-	log.Debug(parentUID)
+	log.Info(parentUID)
 
 	if err != nil {
 		log.Error(err)
-		c.JSON(http.StatusInternalServerError, err)
+		c.JSON(http.StatusInternalServerError, SERVER)
 		return
 	}
 
@@ -302,7 +354,7 @@ func SubTaskHandler(c *gin.Context) {
 		tp = val
 	}
 	childUID := tp
-	log.Debug(childUID)
+	log.Info(childUID)
 
 	res, err = models.Link(parentUID, childUID)
 	if err != nil {
