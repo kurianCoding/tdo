@@ -35,11 +35,12 @@ type Task struct {
 // This struct is for user
 
 // -- this struct represents the user payload
+
 type CreateTaskPl struct {
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	Parent      string `json:"parent"`
-	Time        string `json:"time"`
+	Title       string `json:"title" example:"app title"`
+	Description string `json:"description" example:"new app"`
+	Parent      string `json:"parent" `
+	Time        string `json:"time" example:"20202020"`
 }
 
 //-- this struct represents additional fields response to user
