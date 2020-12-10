@@ -35,14 +35,14 @@ func init() {
 	fmt.Println("init")
 }
 
-// CreateTaskHandler create new task
-// TODO: add validation for time
+/* CreateTaskHandler create new task
+TODO: add validation for time*/
 
-// CreateTaskHandler creates Task
+// CreateTask creates Task
 // CreateTask godoc
 // @Summary Create a Task
 // @Description add by json Task
-// @Tags CreateTaskHandler
+// @Tags CreateTask
 // @Param task body models.CreateTaskPl true "Create Task"
 // @Accept  json
 // @Produce  json
