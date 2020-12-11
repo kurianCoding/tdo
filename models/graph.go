@@ -39,13 +39,14 @@ type Task struct {
 type CreateTaskPl struct {
 	Title       string `json:"title" example:"app title"`
 	Description string `json:"description" example:"new app"`
-	Parent      string `json:"parent" `
+	Parent      string `json:"-" `
 	Time        string `json:"time" example:"20202020"`
 }
 
 //-- this struct represents additional fields response to user
 type CreateTaskDBPl struct {
 	ID      string         `json:"id"`
+	Type    string         `json:"-"`
 	SubTask []CreateTaskPl `json:"subtask"`
 }
 
