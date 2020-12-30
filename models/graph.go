@@ -14,11 +14,11 @@ import (
 
 // -- this struct represents the user payload
 type CreateTaskPlInt struct {
-	Title       string   `json:"task.title"`
-	Description string   `json:"task.description"`
-	Parent      string   `json:"task.parent"`
-	Emails      []string `json:"task.emails"`
-	Time        string   `json:"task.time"`
+	Title       string `json:"task.title"`
+	Description string `json:"task.description"`
+	Parent      string `json:"task.parent"`
+	Assignee    Person `json:"task.person"`
+	Time        string `json:"task.time"`
 }
 
 //-- this struct represents additional fields response to user
@@ -38,11 +38,11 @@ type Task struct {
 // -- this struct represents the user payload
 
 type CreateTaskPl struct {
-	Title       string   `json:"title" example:"app title"`
-	Description string   `json:"description" example:"new app"`
-	Parent      string   `json:"-" `
-	Emails      []string `json:"task.emails"`
-	Time        string   `json:"time" example:"20202020"`
+	Title       string `json:"title" example:"app title"`
+	Description string `json:"description" example:"new app"`
+	Parent      string `json:"-" `
+	Assignee    Person `json:"task.person"`
+	Time        string `json:"time" example:"20202020"`
 }
 
 //-- this struct represents additional fields response to user
@@ -58,9 +58,10 @@ type TaskPl struct {
 }
 
 type Person struct {
-	Name  string `json:"name"`
-	Email string `json:"email"`
-	Type  string `json:"-"`
+	ID    string `json:"person.id"`
+	Name  string `json:"person.name"`
+	Email string `json:"person.email"`
+	Type  string `json:"dgraph.type"`
 }
 
 // Task represents all the teasks and subtasks
@@ -100,6 +101,18 @@ func Link(parent, child string) (res *api.Response, err error) {
 	}
 	res, err = dg.NewTxn().Mutate(ctx, link)
 	return
+}
+
+func GetPersonUID(id string) (res *api.Response, err error) {
+	q := `query gettask($id:string)
+	{ getTasks(func: eq(person.id,$id)){
+			uid
+		}
+	}`
+	variables := map[string]string{"$id": id}
+	res, err = dg.NewReadOnlyTxn().QueryWithVars(ctx, q, variables)
+	return
+
 }
 
 // GetUID gets the uid of given id node
@@ -232,15 +245,15 @@ func CreateTask(t Task) (res *api.Response, err error) {
 	return
 }
 
-func AssignTask(email string, tasktitle string) (res *api.Response, err error) {
+func AssignTask(userId string, taskid string) (res *api.Response, err error) {
 	// assign task from email
 	query := `query {
-	    task as var(func: eq(tasktitle,"` + tasktitle + `"))
-	    user as var(func: eq(email,"` + email + `"))
+	    task as var(func: eq(task.id,"` + taskid + `"))
+	    person as var(func: eq(person.id,"` + userId + `"))
 	}`
 
 	m1 := &api.Mutation{
-		SetNquads: []byte(`uid(task) <task.assignee> uid(user).`),
+		SetNquads: []byte(`<uid(task)> <task.person> <uid(person)>.`),
 	}
 	req := &api.Request{
 		Query:     query,
@@ -248,6 +261,25 @@ func AssignTask(email string, tasktitle string) (res *api.Response, err error) {
 		CommitNow: true,
 	}
 
+	res, err = dg.NewTxn().Do(ctx, req)
+	return
+}
+
+func UpdatePerson(ID string, email string) (res *api.Response, err error) {
+	query := `query {
+	    person as var(func: eq(person.id,"` + ID + `"))
+
+	}`
+
+	m1 := &api.Mutation{
+		SetNquads: []byte(`uid(person) <person.email> "` + email + `" .`),
+	}
+
+	req := &api.Request{
+		Query:     query,
+		Mutations: []*api.Mutation{m1},
+		CommitNow: true,
+	}
 	res, err = dg.NewTxn().Do(ctx, req)
 	return
 }
