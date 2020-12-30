@@ -14,10 +14,11 @@ import (
 
 // -- this struct represents the user payload
 type CreateTaskPlInt struct {
-	Title       string `json:"task.title"`
-	Description string `json:"task.description"`
-	Parent      string `json:"task.parent"`
-	Time        string `json:"task.time"`
+	Title       string   `json:"task.title"`
+	Description string   `json:"task.description"`
+	Parent      string   `json:"task.parent"`
+	Emails      []string `json:"task.emails"`
+	Time        string   `json:"task.time"`
 }
 
 //-- this struct represents additional fields response to user
@@ -37,10 +38,11 @@ type Task struct {
 // -- this struct represents the user payload
 
 type CreateTaskPl struct {
-	Title       string `json:"title" example:"app title"`
-	Description string `json:"description" example:"new app"`
-	Parent      string `json:"-" `
-	Time        string `json:"time" example:"20202020"`
+	Title       string   `json:"title" example:"app title"`
+	Description string   `json:"description" example:"new app"`
+	Parent      string   `json:"-" `
+	Emails      []string `json:"task.emails"`
+	Time        string   `json:"time" example:"20202020"`
 }
 
 //-- this struct represents additional fields response to user
@@ -53,6 +55,12 @@ type CreateTaskDBPl struct {
 type TaskPl struct {
 	CreateTaskPl
 	CreateTaskDBPl
+}
+
+type Person struct {
+	Name  string `json:"name"`
+	Email string `json:"email"`
+	Type  string `json:"-"`
 }
 
 // Task represents all the teasks and subtasks
@@ -218,6 +226,38 @@ func CreateTask(t Task) (res *api.Response, err error) {
 	tj, _ := json.Marshal(t) // ignoring error because struct is created by app
 	create := &api.Mutation{
 		SetJson:   tj,
+		CommitNow: true,
+	}
+	res, err = dg.NewTxn().Mutate(ctx, create)
+	return
+}
+
+func AssignTask(email string, tasktitle string) (res *api.Response, err error) {
+	// assign task from email
+	query := `query {
+	    task as var(func: eq(tasktitle,"` + tasktitle + `"))
+	    user as var(func: eq(email,"` + email + `"))
+	}`
+
+	m1 := &api.Mutation{
+		SetNquads: []byte(`uid(task) <task.assignee> uid(user).`),
+	}
+	req := &api.Request{
+		Query:     query,
+		Mutations: []*api.Mutation{m1},
+		CommitNow: true,
+	}
+
+	res, err = dg.NewTxn().Do(ctx, req)
+	return
+}
+
+func CreatePerson(p Person) (res *api.Response, err error) {
+	// create person
+	p.Type = "Person"
+	pj, _ := json.Marshal(p)
+	create := &api.Mutation{
+		SetJson:   pj,
 		CommitNow: true,
 	}
 	res, err = dg.NewTxn().Mutate(ctx, create)
